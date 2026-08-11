@@ -45,13 +45,13 @@
 
 ## 6. Điều tra challenge
 
-- Challenge ID:
-- Triệu chứng từ metrics:
-- Trace ID liên quan:
-- Log line/correlation ID liên quan:
-- Root cause:
-- Fix action:
-- Preventive measure:
+- Challenge ID: `day13-k3-observability-v1` (cohort `K3`, affected feature `refund`).
+- Triệu chứng từ metrics: So với baseline, latency p50 tăng từ `152 ms` lên `2,662 ms` (+2,510 ms) và p95 tăng từ `979 ms` lên `3,541 ms` (+2,562 ms), vượt SLO p95 `<= 3,000 ms`. Trong khi đó error rate vẫn `0.0%` và avg cost/request giảm nhẹ từ `$0.0021` xuống `$0.0019`; đây là incident về latency, không phải tool failure hoặc cost spike.
+- Trace ID liên quan: [`5cb91e1f182ebd41e81d7f0cad9f1ae1`](https://cloud.langfuse.com/project/cmso2kzp603fxad0j8cldfasd/traces?peek=68486d77f660279c&observation=68486d77f660279c&traceId=5cb91e1f182ebd41e81d7f0cad9f1ae1&timestamp=2026-08-11T05%3A43%3A26.951Z). Trace này có correlation ID `req-608d0991`, prompt `day13-chat` v1 / label `production`, `prompt_source: langfuse`, `doc_count: 1`, query preview `Summarize the refund policy for a support agent.`
+- Log line/correlation ID liên quan: `correlation_id=req-608d0991`. Log `request_received` lúc `2026-08-11T05:43:26.951018Z` và `response_sent` lúc `2026-08-11T05:43:29.614150Z` ghi `latency_ms=2661`, `feature=refund`, HTTP `200`. Log control ngay trước batch cũng xác nhận `incident_enabled` với `name=rag_slow`.
+- Root cause: Incident `rag_slow` đã được bật. Bước RAG retrieval thêm `time.sleep(2.5)`, khiến latency mỗi request tăng xấp xỉ 2.5 giây. Trace của `req-608d0991` liên kết đúng request bằng correlation ID và cho thấy truy vấn dùng một tài liệu (`doc_count=1`); metrics loại trừ giả thuyết lỗi tool (không có 500/error) và cost spike (cost/token không tăng 4x).
+- Fix action: Trong môi trường lab, tắt incident bằng `.venv/bin/python scripts/inject_incident.py --scenario rag_slow --disable`. Trong production, khôi phục/vector-store retrieval về độ trễ bình thường, đặt timeout phù hợp và dùng cache hoặc fallback retrieval khi upstream chậm.
+- Preventive measure: Duy trì alert `latency_p95_ms > 3000 ms` trong 5 phút; khi alert kích hoạt, điều tra theo Metrics -> Trace waterfall (ưu tiên span `retrieve`) -> Logs bằng correlation ID. Theo dõi latency riêng cho retrieval, đặt timeout/circuit breaker và đo lại baseline sau mỗi thay đổi.
 
 ## 7. Đóng góp cá nhân
 
@@ -60,4 +60,3 @@ Với mỗi thành viên, ghi rõ nhiệm vụ và link commit/PR tương ứng.
 | Thành viên | Phần việc | Commit/PR | Điều đã học |
 |---|---|---|---|
 | Thành viên nhóm | Dashboard, SLO & Alert | Dựng dashboard 6 panel contract (`config/dashboard.yaml`), thiết lập `config/slo.yaml`, `config/alert_rules.yaml` và viết 3 runbook (`docs/alerts.md`) | Hiểu rõ 6 panel chỉ số observability AI, đo lường percentiles (P50/P95/P99), thiết kế symptom-based alert và quy trình điều tra runtime khi có sự cố |
-
