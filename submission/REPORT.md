@@ -9,7 +9,7 @@
 
 ## 2. Kết quả kỹ thuật
 
-- Điểm `validate_logs.py`:
+- Điểm `validate_logs.py` (baseline, Checkpoint 0, 2026-08-11): 30/100 — 21 log records, 20 thiếu required fields, 20 thiếu enrichment, 0 correlation ID, 0 PII leak phát hiện (PII scrubbing PASSED do chưa có dữ liệu PII trong baseline).
 - Tổng số traces:
 - Số PII leak còn lại:
 - Link/đường dẫn dashboard:
