@@ -29,6 +29,38 @@ function calculatePercentile(arr: number[], p: number): number {
 
 export const dynamic = 'force-dynamic';
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+
+async function fetchBackendMetrics(): Promise<any | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/metrics`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' }
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Backend offset or restarting
+  }
+  return null;
+}
+
+async function fetchBackendHealth(): Promise<any | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/health`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' }
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Backend offset or restarting
+  }
+  return null;
+}
+
 function findLogsFile(): string | null {
   const possiblePaths = [
     path.join(process.cwd(), '..', 'data', 'logs.jsonl'),
@@ -45,65 +77,29 @@ function findLogsFile(): string | null {
   return null;
 }
 
-
 export async function GET() {
   try {
+    // 1. Thử kết nối trực tiếp với Backend (FastAPI app/main.py)
+    const backendMetrics = await fetchBackendMetrics();
+    const backendHealth = await fetchBackendHealth();
+
+    // 2. Đọc dữ liệu từ file log data/logs.jsonl cho biểu đồ theo thời gian
     const filePath = findLogsFile();
-    if (!filePath) {
-      return NextResponse.json({
-        error: 'Logs file data/logs.jsonl not found',
-        minuteData: [],
-        summary: {
-          totalRequests: 0,
-          avgTrafficRate: 0,
-          p50: 0,
-          p95: 0,
-          p99: 0,
-          totalErrors: 0,
-          errorRatePct: 0,
-          totalCost: 0,
-          totalTokens: 0,
-          meanQuality: 0,
-          status: 'No Data',
-          is6Of6Valid: false
-        },
-        errorBreakdown: []
-      });
-    }
+    let records: LogRecord[] = [];
 
-    const fileContent = fs.readFileSync(/*turbopackIgnore: true*/ filePath, 'utf-8');
-    const lines = fileContent.split('\n').filter((l) => l.trim() !== '');
+    if (filePath) {
+      const fileContent = fs.readFileSync(/*turbopackIgnore: true*/ filePath, 'utf-8');
+      const lines = fileContent.split('\n').filter((l) => l.trim() !== '');
 
-    const records: LogRecord[] = [];
-    for (const line of lines) {
-      try {
-        const parsed = JSON.loads ? JSON.parse(line) : JSON.parse(line);
-        const payload = parsed.payload || {};
-        records.push({ ...parsed, ...payload });
-      } catch {
-        // Skip malformed lines
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line);
+          const payload = parsed.payload || {};
+          records.push({ ...parsed, ...payload });
+        } catch {
+          // Skip malformed lines
+        }
       }
-    }
-
-    if (records.length === 0) {
-      return NextResponse.json({
-        minuteData: [],
-        summary: {
-          totalRequests: 0,
-          avgTrafficRate: 0,
-          p50: 0,
-          p95: 0,
-          p99: 0,
-          totalErrors: 0,
-          errorRatePct: 0,
-          totalCost: 0,
-          totalTokens: 0,
-          meanQuality: 0,
-          status: 'Empty Data',
-          is6Of6Valid: true
-        },
-        errorBreakdown: []
-      });
     }
 
     // Lọc các bản ghi theo event
@@ -111,7 +107,7 @@ export async function GET() {
     const sentEvents = records.filter((r) => r.event === 'response_sent');
     const failEvents = records.filter((r) => r.event === 'request_failed');
 
-    // Phân nhóm theo phút (HH:mm)
+    // Phân nhóm theo phút (HH:mm) cho biểu đồ time-series
     const minuteMap = new Map<string, {
       latencies: number[];
       requests: number;
@@ -165,7 +161,6 @@ export async function GET() {
       }
     }
 
-    // Chuyển Map thành mảng minuteData sắp xếp theo thời gian
     const minuteData = Array.from(minuteMap.entries())
       .sort(([timeA], [timeB]) => timeA.localeCompare(timeB))
       .map(([time, data]) => {
@@ -189,28 +184,34 @@ export async function GET() {
         };
       });
 
-    // Tính toán tổng chỉ số (Summary Metrics)
+    // 3. Kết hợp kết quả giữa Backend API (app/metrics.py) và Log Aggregation
     const allLatencies = sentEvents
       .map((r) => r.latency_ms)
       .filter((v): v is number => typeof v === 'number');
 
-    const p50Overall = Number(calculatePercentile(allLatencies, 50).toFixed(1));
-    const p95Overall = Number(calculatePercentile(allLatencies, 95).toFixed(1));
-    const p99Overall = Number(calculatePercentile(allLatencies, 99).toFixed(1));
+    const p50Overall = backendMetrics?.latency_p50 ?? Number(calculatePercentile(allLatencies, 50).toFixed(1));
+    const p95Overall = backendMetrics?.latency_p95 ?? Number(calculatePercentile(allLatencies, 95).toFixed(1));
+    const p99Overall = backendMetrics?.latency_p99 ?? Number(calculatePercentile(allLatencies, 99).toFixed(1));
 
-    const totalRequests = reqEvents.length || sentEvents.length;
-    const totalErrors = failEvents.length;
-    const errorRatePct = totalRequests > 0 ? Number(((totalErrors / totalRequests) * 100).toFixed(2)) : 0;
-
-    const totalCost = Number(sentEvents.reduce((acc, r) => acc + (r.cost_usd || 0), 0).toFixed(4));
-    const totalTokens = sentEvents.reduce((acc, r) => acc + (r.tokens_in || 0) + (r.tokens_out || 0), 0);
+    const totalRequests = backendMetrics?.traffic ?? (reqEvents.length || sentEvents.length);
+    const totalCost = backendMetrics?.total_cost_usd ?? Number(sentEvents.reduce((acc, r) => acc + (r.cost_usd || 0), 0).toFixed(4));
+    const totalTokens = (backendMetrics?.tokens_in_total && backendMetrics?.tokens_out_total)
+      ? (backendMetrics.tokens_in_total + backendMetrics.tokens_out_total)
+      : sentEvents.reduce((acc, r) => acc + (r.tokens_in || 0) + (r.tokens_out || 0), 0);
 
     const validQualities = sentEvents
       .map((r) => r.quality_score)
       .filter((v): v is number => typeof v === 'number');
-    const meanQuality = validQualities.length > 0
-      ? Number((validQualities.reduce((a, b) => a + b, 0) / validQualities.length).toFixed(3))
-      : 0;
+    const meanQuality = backendMetrics?.quality_avg ?? (
+      validQualities.length > 0
+        ? Number((validQualities.reduce((a, b) => a + b, 0) / validQualities.length).toFixed(3))
+        : 0
+    );
+
+    const totalErrors = failEvents.length;
+    const errorRatePct = backendMetrics?.error_rate_pct ?? (
+      totalRequests > 0 ? Number(((totalErrors / totalRequests) * 100).toFixed(2)) : 0
+    );
 
     const avgTrafficRate = minuteData.length > 0
       ? Number((totalRequests / minuteData.length).toFixed(2))
@@ -222,12 +223,20 @@ export async function GET() {
       const errType = fe.error_type || 'UnknownError';
       errorCounts.set(errType, (errorCounts.get(errType) || 0) + 1);
     }
+    if (backendMetrics?.error_breakdown) {
+      for (const [errType, cnt] of Object.entries(backendMetrics.error_breakdown)) {
+        errorCounts.set(errType, Number(cnt));
+      }
+    }
+
     const errorBreakdown = Array.from(errorCounts.entries()).map(([error_type, count]) => ({
       error_type,
       count
     }));
 
     return NextResponse.json({
+      backendConnected: !!backendMetrics,
+      backendHealth: backendHealth || { ok: false },
       minuteData,
       summary: {
         totalRequests,
@@ -240,14 +249,14 @@ export async function GET() {
         totalCost,
         totalTokens,
         meanQuality,
-        status: 'Healthy',
+        status: backendMetrics ? 'Connected to FastAPI Backend (app/)' : 'Reading from data/logs.jsonl',
         is6Of6Valid: true
       },
       errorBreakdown
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || 'Failed to parse logs' },
+      { error: error?.message || 'Failed to process metrics' },
       { status: 500 }
     );
   }
