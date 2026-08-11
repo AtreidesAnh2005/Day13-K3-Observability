@@ -15,7 +15,7 @@ from app.challenge import load_challenge, ordered_queries
 from app.cli import configure_utf8_stdio
 
 BASE_URL = "http://127.0.0.1:8000"
-QUERIES = Path("data/sample_queries.jsonl")
+QUERIES = Path("data/challenge_queries.jsonl")
 
 
 def send_request(client: httpx.Client, payload: dict) -> None:
