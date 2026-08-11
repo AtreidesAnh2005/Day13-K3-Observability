@@ -2,10 +2,14 @@
 
 ## 1. Thông tin nhóm
 
-- Tên nhóm:
-- Repository URL:
-- Commit SHA cuối:
+- Tên nhóm: Bia Hoi Hai Xom
+- Repository URL: https://github.com/AtreidesAnh2005/Day13-K3-Observability
+- Commit SHA cuối: 'completed lab'
 - Thành viên và vai trò:
+  - Lương Quốc Khánh — `2A202601713`: Thành viên 1, phụ trách Logging & PII.
+  - Hoàng Đức Anh — `2A202601223`: Thành viên 2, phụ trách Tracing & Prompts.
+  - Nguyễn Thu Huyền — `2A202601027`: Thành viên 3, phụ trách Dashboard & Alert.
+  - Trần Nguyễn Mỹ Anh — `2A202601019`: Thành viên 4, phụ trách QA, Testing & Report.
 
 ## 2. Kết quả kỹ thuật
 
@@ -59,4 +63,7 @@ Với mỗi thành viên, ghi rõ nhiệm vụ và link commit/PR tương ứng.
 
 | Thành viên | Phần việc | Commit/PR | Điều đã học |
 |---|---|---|---|
-| Thành viên nhóm | Dashboard, SLO & Alert | Dựng dashboard 6 panel contract (`config/dashboard.yaml`), thiết lập `config/slo.yaml`, `config/alert_rules.yaml` và viết 3 runbook (`docs/alerts.md`) | Hiểu rõ 6 panel chỉ số observability AI, đo lường percentiles (P50/P95/P99), thiết kế symptom-based alert và quy trình điều tra runtime khi có sự cố |
+| Lương Quốc Khánh — 2A202601713 | Logging & PII: correlation ID, enrichment log và che email/số điện thoại/thông tin nhạy cảm. | Bổ sung sau khi commit/push | Structured logging, correlation ID và PII redaction. |
+| Hoàng Đức Anh — 2A202601223 | Tracing & Prompts: tích hợp Langfuse, tạo prompt v1/v2, cấu hình label và rollback. | Bổ sung sau khi commit/push | Liên kết trace với metadata và quản lý prompt version. |
+| Nguyễn Thu Huyền — 2A202601027 | Dashboard & Alert: dựng 6 panel từ `data/logs.jsonl`, thiết lập SLO, alert rules và runbook. | Bổ sung sau khi commit/push | Đo latency/cost/error/quality, thiết kế SLO và alert symptom-based. |
+| Trần Nguyễn Mỹ Anh — 2A202601019 | QA, Testing & Report: chạy load test, điều tra challenge theo Metrics → Traces → Logs, tổng hợp evidence và hoàn thiện báo cáo. | Bổ sung sau khi commit/push | Điều tra incident bằng correlation ID và kết nối bằng chứng metrics, trace, log. |
