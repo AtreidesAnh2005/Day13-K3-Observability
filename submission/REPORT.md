@@ -10,24 +10,27 @@
 ## 2. Kết quả kỹ thuật
 
 - Điểm `validate_logs.py` (baseline, Checkpoint 0, 2026-08-11): 30/100 — 21 log records, 20 thiếu required fields, 20 thiếu enrichment, 0 correlation ID, 0 PII leak phát hiện (PII scrubbing PASSED do chưa có dữ liệu PII trong baseline).
-- Tổng số traces:
-- Số PII leak còn lại:
+- Tổng số traces: 216 traces trên Langfuse (project `My Project`, org `nthne's Organization`), vượt yêu cầu tối thiểu 10. Evidence: `submission/evidence/cp2-trace.png`, `submission/evidence/cp2-trace2.png`.
+- Số PII leak còn lại: 0 — email, số điện thoại, số thẻ đều được che (`[REDACTED_EMAIL]`, `[REDACTED_PHONE_VN]`, `[REDACTED_CREDIT_CARD]`). Evidence: `submission/evidence/cp1-pii-redaction.png`.
 - Link/đường dẫn dashboard:
 
 ## 3. Logging và tracing
 
-- Evidence correlation ID:
-- Evidence PII redaction:
-- Evidence trace waterfall:
-- Giải thích một span đáng chú ý:
+- Evidence correlation ID: `submission/evidence/cp1-correlation-propagation.png` — correlation_id `req-role1-demo` xuất hiện xuyên suốt cả `request_received` và `response_sent` của cùng một request.
+- Evidence PII redaction: `submission/evidence/cp1-pii-redaction.png`.
+- Evidence trace waterfall: `submission/evidence/cp2-trace_waterfall.png`.
+- Giải thích một span đáng chú ý: Span gốc `run` (bọc `LabAgent.run`) của trace candidate (session `s_prompt_candidate_v1`, trace ID `9a37d6eaeb1567fa1a85818131e72e14`) — latency 2.10s, cost $0.002307, model `claude-sonnet-4-5`, gắn `Prompt: day13-chat - v2`. Span này bao trọn bước retrieve docs + gọi LLM, cho thấy toàn bộ chi phí và độ trễ của một request nằm ở generation con bên trong.
 
 ## 4. Prompt versioning
 
-- Prompt name:
-- Version/label baseline:
-- Version/label candidate:
+- Prompt name: `day13-chat` (text prompt, 3 biến `feature`/`docs`/`message`).
+- Version/label baseline: version 1, label `baseline` (đồng thời `production` lúc khởi tạo).
+- Version/label candidate: version 2, label `candidate`.
 - Trace ID của mỗi version:
-- Bằng chứng đổi label hoặc rollback:
+  - `baseline` (v1): `53170034f93e4c03ac1e807dc503239a` — https://cloud.langfuse.com/project/cmso2kzp603fxad0j8cldfasd/traces/53170034f93e4c03ac1e807dc503239a
+  - `candidate` (v2): `9a37d6eaeb1567fa1a85818131e72e14` — https://cloud.langfuse.com/project/cmso2kzp603fxad0j8cldfasd/traces/9a37d6eaeb1567fa1a85818131e72e14
+  - Cả hai đều có `prompt_source: langfuse` (lấy được prompt managed, không rơi vào fallback local).
+- Bằng chứng đổi label hoặc rollback: **chưa thực hiện** — để dành cho Phase 3 (đổi `production` sang v2 rồi rollback về v1, kèm ảnh trước/sau).
 
 ## 5. Dashboard, SLO và alerts
 
