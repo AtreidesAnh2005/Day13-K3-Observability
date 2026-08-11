@@ -31,10 +31,14 @@
 
 ## 5. Dashboard, SLO và alerts
 
-- Kết quả `validate_dashboard.py`:
-- Evidence dashboard:
+- Kết quả `validate_dashboard.py`: `HỢP LỆ: 6/6 panel có trong dashboard contract.`
+- Evidence dashboard: Tệp bằng chứng thực nghiệm `submission/evidence/dashboard_runtime_evidence.txt` và giao diện tương tác `scripts/dashboard_app.py` (Streamlit).
 - SLO đã chọn và lý do:
-- Alert rules và runbook:
+  * `latency_p95_ms <= 3000ms` (Target 99.5%): Giữ phản hồi RAG/LLM nhanh chóng dưới 3 giây cho trải nghiệm người dùng tối ưu.
+  * `error_rate_pct <= 2%` (Target 99.0%): Hạn chế tỷ lệ lỗi request dưới 2% để đạt tiêu chuẩn độ tin cậy SLA.
+  * `daily_cost_usd <= $2.5` (Target 100.0%): Kiểm soát ngân sách API token gọi mô hình LLM hàng ngày.
+  * `quality_score_avg >= 0.75` (Target 95.0%): Đảm bảo điểm số chất lượng câu trả lời AI vượt mốc 0.75/1.0.
+- Alert rules và runbook: Đã thiết lập 3 quy tắc cảnh báo symptom-based tại `config/alert_rules.yaml`, chỉ số mục tiêu tại `config/slo.yaml` và hoàn thiện 3 quy trình xử lý sự cố chi tiết tại `docs/alerts.md`.
 
 ## 6. Điều tra challenge
 
@@ -52,4 +56,5 @@ Với mỗi thành viên, ghi rõ nhiệm vụ và link commit/PR tương ứng.
 
 | Thành viên | Phần việc | Commit/PR | Điều đã học |
 |---|---|---|---|
-| | | | |
+| Thành viên nhóm | Dashboard, SLO & Alert | Dựng dashboard 6 panel contract (`config/dashboard.yaml`), thiết lập `config/slo.yaml`, `config/alert_rules.yaml` và viết 3 runbook (`docs/alerts.md`) | Hiểu rõ 6 panel chỉ số observability AI, đo lường percentiles (P50/P95/P99), thiết kế symptom-based alert và quy trình điều tra runtime khi có sự cố |
+

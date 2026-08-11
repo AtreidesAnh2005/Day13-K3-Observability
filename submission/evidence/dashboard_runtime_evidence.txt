@@ -1,0 +1,31 @@
+=== DAY 13 AI OBSERVABILITY - DASHBOARD & RUNTIME VERIFICATION EVIDENCE ===
+
+1. CONTRACT VALIDATION RESULT:
+   Command: python scripts/validate_dashboard.py
+   Result: HỢP LỆ: 6/6 panel có trong dashboard contract.
+   Panels verified:
+     - latency: Latency percentiles (P50, P95, P99) | Unit: ms | Threshold P95 <= 3000 ms
+     - traffic: Request traffic (count, rate_per_minute) | Unit: requests_per_minute | Threshold >= 1
+     - errors: Error rate and breakdown (error_rate_pct, count_by_value) | Unit: percent | Threshold <= 2%
+     - cost: Cost over time (sum_by_minute, total) | Unit: usd | Threshold <= $2.5
+     - tokens: Input and output tokens (sum_by_field tokens_in/out) | Unit: tokens | Threshold <= 50,000
+     - quality: Quality proxy (mean quality_score) | Unit: score_0_to_1 | Threshold >= 0.75
+
+2. RUNTIME INCIDENT VERIFICATION (docs/DASHBOARD_SETUP.md):
+   Scenario Tested: rag_slow
+   - Baseline Metrics:
+       * P95 Latency: ~893.95 ms (PASS: <= 3000 ms)
+       * Request Traffic: ~10 requests (PASS: >= 1 req/min)
+       * Error Rate: 0.0% (PASS: <= 2%)
+       * Cumulative Cost: $0.01809 (PASS: <= $2.5)
+       * Total Tokens: 1,470 tokens (PASS: <= 50,000)
+       * Mean Quality Score: 0.880 (PASS: >= 0.75)
+   
+   - Incident Activated (python scripts/inject_incident.py --scenario rag_slow):
+       * Incident traffic latencies spiked to: 7,975 ms - 10,719 ms
+       * P95 Latency on Dashboard: 10,716 ms (FAIL: Exceeded threshold 3000 ms, alert triggered)
+       * Correlation IDs of slow requests: req-7feae962, req-b913297d, req-51e2fee9
+       * Evidence Log Event: response_sent with latency_ms=10716.6 ms
+   
+   - Incident Disabled (python scripts/inject_incident.py --scenario rag_slow --disable):
+       * Status: 200 OK {'ok': True, 'incidents': {'rag_slow': False, 'tool_fail': False, 'cost_spike': False}}
